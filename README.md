@@ -201,25 +201,119 @@ The integrated pipeline successfully combines speech separation and speaker veri
   - Use adversarial training to further reduce artifacts.
   - Expand the dataset to include more varied acoustic environments.
 
----
+# Part B
+# MFCC Feature Extraction and Comparative Analysis of Indian Languages
 
-## References
-
-1. Nagrani, A., Chung, J. S., & Zisserman, A. (2017). *VoxCeleb: a large-scale speaker identification dataset.*
-2. Chung, J. S., Nagrani, A., & Zisserman, A. (2018). *VoxCeleb2: Deep speaker recognition.*
-3. Chen, N., et al. (2021). *WavLM: Large-Scale Pre-trained Models for Speech.* Microsoft Research.
-4. Baevski, A., Zhou, H., Mohamed, A., & Auli, M. (2020). *wav2vec 2.0: A Framework for Self-Supervised Learning of Speech Representations.*
-5. Subakan, C., et al. (2021). *SepFormer: Transformer based separation for speech separation.* [GitHub Repository](https://github.com/speechbrain/sepformer-whamr)
-6. Liu, L., et al. *Parameter-Efficient Fine-Tuning (PEFT) Library.* [GitHub Repository](https://github.com/huggingface/peft)
-7. Akiba, T., Sano, S., Yanase, T., Ohta, T., & Koyama, M. (2019). *Optuna: A next-generation hyperparameter optimization framework.*
-8. Rafii, Z., et al. *mir_eval: A library for music and audio evaluation.* [GitHub Repository](https://github.com/craffel/mir_eval)
-9. ITU-T Recommendation P.862. (2001). *Perceptual evaluation of speech quality (PESQ): An objective method for end-to-end speech quality assessment.*
-10. Paszke, A., et al. *Torchaudio: An audio library for PyTorch.* [PyTorch](https://pytorch.org/audio/)
-11. Wolf, T., et al. (2020). *Transformers: State-of-the-art Natural Language Processing.* [GitHub Repository](https://github.com/huggingface/transformers)
-12. Palanisamy, R., et al. *SpeechBrain: An open-source and all-in-one speech toolkit.* [SpeechBrain](https://speechbrain.github.io/)
+Language identification from speech is a critical task with applications ranging from automated transcription systems to multilingual virtual assistants. In this project, we analyze the acoustic signatures of Hindi, Tamil, and Bengali using Mel-Frequency Cepstral Coefficients (MFCCs) and evaluate the discriminative power of these features both visually and statistically. Furthermore, we develop classification models to accurately identify the spoken language from short audio segments.
 
 ---
 
-This README provides a comprehensive overview of our methodology, experiments, and the results obtained in the multi-speaker speech enhancement and verification tasks. For further details, please refer to the full report in the [M23CSA001_Ques1.pdf](https://github.com/bahetiaditi/M23CSA001_Speech_Assignment2.git).
+## Dataset Description
 
-Feel free to explore the code, replicate the experiments, and contribute to the project!
+The dataset used in this project is sourced from the [Audio Dataset with 10 Indian Languages on Kaggle](https://www.kaggle.com/datasets/balakrishcodes/audio-dataset-for-language-identification). For this assignment, a representative subset of three languages (Hindi, Tamil, and Bengali) is selected. Key preprocessing steps include:
+- Truncating each audio file to a fixed duration of 3 seconds.
+- Converting audio to mono-channel.
+- Processing a maximum of 20 audio files per language to maintain class balance.
+
+---
+
+## MFCC Feature Extraction and Analysis (Task A)
+
+### MFCC Background
+
+MFCCs approximate the human auditory system’s response by capturing the short-term power spectrum of audio signals on a mel scale. They are widely used in speech processing and language recognition for their ability to capture timbre and phonetic characteristics.
+
+### Extraction Process
+
+- **Library Used:** LibROSA
+- **Features Extracted:** 13 MFCC coefficients, along with first-order (delta) and second-order (delta-delta) derivatives.
+- **Processing Steps:** Load the audio at its native sampling rate, normalize, and truncate to 3 seconds.
+- **Output:** Structured feature vectors stored with accompanying metadata such as sample rate and file path.
+
+### MFCC Spectrogram Visualization
+
+MFCC spectrograms were generated for sample audio clips from Hindi, Tamil, and Bengali. Visual analysis reveals:
+- **Hindi:** Dynamic fluctuations in lower coefficients, indicating varied phonetic transitions.
+- **Bengali:** Smoother transitions with more stable mid-range coefficients.
+- **Tamil:** Dense lower-frequency energy bands, possibly reflecting retroflex consonants and longer vowel durations.
+
+These visual patterns indicate that MFCCs capture language-specific acoustic characteristics.
+
+### Statistical Analysis of MFCCs
+
+For each language:
+- **Mean and Standard Deviation:** Computed for all 13 MFCC coefficients.
+- **Observations:** 
+  - Hindi shows more variability in the first few coefficients.
+  - Tamil exhibits consistent patterns with lower variance.
+  - Bengali maintains a balanced spectral profile.
+  
+Pairwise t-tests were performed on each MFCC coefficient between language pairs. The resulting p-values (with significance threshold set at 0.05) indicate that Hindi differs significantly from the other two languages, while Tamil and Bengali share some similarities.
+
+### Dimensionality Reduction using PCA
+
+Principal Component Analysis (PCA) was applied to the aggregated MFCC feature vectors (mean per sample). The first two principal components explain approximately 46% of the variance, with a scatter plot revealing:
+- Distinct clusters for Hindi, Tamil, and Bengali.
+- Hindi forms a clearly separate cluster, whereas Tamil and Bengali show some overlap.
+
+### Summary of Significant Differences
+
+A quantitative summary shows:
+- **Hindi vs Tamil:** 100% of MFCC coefficients are significantly different.
+- **Hindi vs Bengali:** Approximately 92% of coefficients are significantly different.
+- **Tamil vs Bengali:** Around 85% show significant differences.
+
+These statistics reinforce the observation that Hindi is acoustically more distinct compared to Tamil and Bengali.
+
+---
+
+## Language Classification using MFCCs (Task B)
+
+### Formulation of Classification Task
+
+The goal is to build a supervised machine learning system that predicts the spoken language (Hindi, Tamil, or Bengali) from the extracted MFCC features. This is formulated as a multiclass classification problem.
+
+### Feature Engineering Strategy
+
+For each audio sample:
+- **Features:** 13 MFCCs along with their delta and delta-delta coefficients.
+- **Aggregation:** Compute mean and standard deviation across time, resulting in a fixed-length vector of size 78 (13 × 6).
+
+### Train-Test Split and Label Encoding
+
+- **Split:** Stratified sampling with 80% training and 20% testing.
+- **Label Encoding:** Convert language labels into numerical format using `LabelEncoder` from scikit-learn.
+
+### Classification Models
+
+Three classifiers were trained:
+  
+#### Support Vector Machine (SVM)
+- **Kernel:** Radial Basis Function (RBF)
+- **Preprocessing:** Standardization and PCA (retaining 95% variance)
+- **Tuning:** Hyperparameters such as C and gamma were tuned using RandomizedSearchCV.
+
+#### Random Forest (RF)
+- **Hyperparameters:** Number of estimators, maximum depth, and minimum samples split.
+- **Note:** Tree-based models are less sensitive to feature scaling.
+
+#### Neural Network (MLP)
+- **Architecture:** One or two hidden layers with ReLU or tanh activation functions.
+- **Training:** Early stopping was implemented, with hyperparameter tuning over hidden layer sizes and learning rates.
+
+### Hyperparameter Tuning Methodology
+
+All models were tuned using `RandomizedSearchCV` with 3-fold cross-validation on a subsample of the training data. The best hyperparameters were then used to retrain the model on the full training set.
+
+### Evaluation Metrics and Results
+
+Models were evaluated based on:
+- **Accuracy, Precision, Recall, F1-Score**
+- **Confusion Matrices:** For class-wise prediction quality
+
+**Best Model:**  
+- **SVM Classifier**
+- **Test Accuracy:** 99.62%
+- **Macro-Averaged F1-Score:** 0.99
+
+The SVM classifier achieved near-perfect classification performance with minimal misclassifications across the three languages.
